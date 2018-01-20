@@ -62,6 +62,11 @@ class WsServer implements HttpServerInterface {
     private $msgCb;
 
     /**
+     * @var \Closure
+     */
+    private $handleOnPong;
+
+    /**
      * @param \Ratchet\WebSocket\MessageComponentInterface|\Ratchet\MessageComponentInterface $component Your application to run with WebSockets
      * @note If you want to enable sub-protocols have your component implement WsServerInterface as well
      */
@@ -94,6 +99,7 @@ class WsServer implements HttpServerInterface {
         }
 
         $this->pongReceiver = function() {};
+        $this->handleOnPong = function() {};
 
         $reusableUnderflowException = new \UnderflowException;
         $this->ueFlowFactory = function() use ($reusableUnderflowException) {
@@ -185,6 +191,8 @@ class WsServer implements HttpServerInterface {
                 $conn->send(new Frame($frame->getPayload(), true, Frame::OP_PONG));
                 break;
             case Frame::OP_PONG:
+                $handleOnPong = $this->handleOnPong;
+                $handleOnPong($frame, $conn);
                 $pongReceiver = $this->pongReceiver;
                 $pongReceiver($frame, $conn);
             break;
@@ -221,5 +229,10 @@ class WsServer implements HttpServerInterface {
                 $pingedConnections->attach($wsConn);
             }
         });
+   }
+
+   public function setHandleOnPong($handleOnPong)
+   {
+     $this->handleOnPong = $handleOnPong;
    }
 }
